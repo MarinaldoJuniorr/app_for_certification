@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">App_for_Certification</string>
+<!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="apps_name">Easy Country Explorer</string>
+    <string name="btn_back">back_buttom</string>
+    <string name="btn_fav">favourite_button</string>
+    <string name="country_flag">Country flag</string>
+</resources>
