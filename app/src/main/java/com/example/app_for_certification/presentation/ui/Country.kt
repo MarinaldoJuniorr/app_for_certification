@@ -13,11 +13,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.app_for_certification.data.network.Api
-import com.example.app_for_certification.data.network.RetrofitClient
+import androidx.room.Room
+import com.example.app_for_certification.data.local.AppDatabase
+import com.example.app_for_certification.data.remote.Api
+import com.example.app_for_certification.data.remote.RetrofitClient
 import com.example.app_for_certification.data.repository.CountryRepositoryImpl
 import com.example.app_for_certification.databinding.FragmentCountryBinding
-import com.example.app_for_certification.domain.repository.CountryRepositoryDomain
 import com.example.app_for_certification.domain.usercase.CodeUseCases
 import com.example.app_for_certification.presentation.model.CountryUiState
 import com.example.app_for_certification.presentation.model.CountryViewModel
@@ -32,16 +33,26 @@ class CountryFragment : Fragment() {
 
     private val viewModel: CountryViewModel by viewModels {
         val api: Api = RetrofitClient.retrofitInstance.create(Api::class.java)
-        val repo: CountryRepositoryDomain = CountryRepositoryImpl(api)
+        val db = Room.databaseBuilder(
+            requireContext().applicationContext,
+            AppDatabase::class.java,
+            "countries.db"
+        ).build()
+
+        val repo = CountryRepositoryImpl(api, db)
         val useCases = CodeUseCases(repo)
+
         object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST") return CountryViewModel(useCases) as T
+                @Suppress("UNCHECKED_CAST")
+                return CountryViewModel(useCases) as T
             }
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
         _binding = FragmentCountryBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -54,7 +65,7 @@ class CountryFragment : Fragment() {
             val code = raw.filter { it.isLetter() }.take(3).uppercase()
             Log.d("CountryFragment", "click code raw='$raw' sanitized='$code' name=${country.name}")
             if (code.length in 2..3) {
-                val action = CountryFragmentDirections.actionToDetail(code)
+                val action = CountryFragmentDirections.actionToDetail(code = code)
                 findNavController().navigate(action)
             } else {
                 Toast.makeText(requireContext(), "Invalid code: '$raw'", Toast.LENGTH_SHORT).show()
@@ -65,8 +76,12 @@ class CountryFragment : Fragment() {
         binding.rvCountries.adapter = adapter
 
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(q: String?): Boolean { viewModel.search(q.orEmpty()); return true }
-            override fun onQueryTextChange(new: String?): Boolean { viewModel.search(new.orEmpty()); return true }
+            override fun onQueryTextSubmit(q: String?): Boolean {
+                viewModel.search(q.orEmpty()); return true
+            }
+            override fun onQueryTextChange(new: String?): Boolean {
+                viewModel.search(new.orEmpty()); return true
+            }
         })
 
         binding.viewError.btnRetry.setOnClickListener { viewModel.refresh() }
@@ -103,6 +118,7 @@ class CountryFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView(); _binding = null
+        super.onDestroyView()
+        _binding = null
     }
 }

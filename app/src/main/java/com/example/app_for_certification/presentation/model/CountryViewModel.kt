@@ -30,7 +30,7 @@ class CountryViewModel(
         viewModelScope.launch {
             try {
                 val list = withContext(Dispatchers.IO) { useCases.fetchAll() }
-                _state.value = if (list.isNullOrEmpty()) CountryUiState.Empty
+                _state.value = if (list.isEmpty()) CountryUiState.Empty
                 else CountryUiState.Success(list)
                 lastQuery = ""
             } catch (_: CancellationException) {
@@ -52,11 +52,10 @@ class CountryViewModel(
 
             try {
                 val list = withContext(Dispatchers.IO) { useCases.fetchSearch(query) }
-                _state.value = if (list.isNullOrEmpty()) CountryUiState.Empty
+                _state.value = if (list.isEmpty()) CountryUiState.Empty
                 else CountryUiState.Success(list)
                 lastQuery = query
             } catch (_: CancellationException) {
-                // ignorado
             } catch (e: Throwable) {
                 _state.value = CountryUiState.Error(e.userFriendlyMessage())
             }
