@@ -12,6 +12,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 class CountryViewModel(
     private val useCases: CodeUseCases
@@ -34,15 +37,26 @@ class CountryViewModel(
                 else CountryUiState.Success(list)
                 lastQuery = ""
             } catch (_: CancellationException) {
+                // ignore
             } catch (e: Throwable) {
-                _state.value = CountryUiState.Error(e.userFriendlyMessage())
+                if (e.isNetworkError()) {
+                    _state.value = CountryUiState.Error(
+                        message = "No internet connection.",
+                        offline = true
+                    )
+                } else {
+                    _state.value = CountryUiState.Error(e.userFriendlyMessage())
+                }
             }
         }
     }
 
     fun search(rawQuery: String) {
         val query = rawQuery.trim().replace(Regex("\\s+"), " ")
-        if (query.isBlank()) { load(force = true); return }
+        if (query.isBlank()) {
+            load(force = true)
+            return
+        }
         if (query == lastQuery && _state.value is CountryUiState.Success) return
 
         searchJob?.cancel()
@@ -56,8 +70,16 @@ class CountryViewModel(
                 else CountryUiState.Success(list)
                 lastQuery = query
             } catch (_: CancellationException) {
+                // ignore
             } catch (e: Throwable) {
-                _state.value = CountryUiState.Error(e.userFriendlyMessage())
+                if (e.isNetworkError()) {
+                    _state.value = CountryUiState.Error(
+                        message = "No internet connection.",
+                        offline = true
+                    )
+                } else {
+                    _state.value = CountryUiState.Error(e.userFriendlyMessage())
+                }
             }
         }
     }
@@ -73,5 +95,15 @@ class CountryViewModel(
             "unable to resolve host" in msg.lowercase() -> "No internet connection."
             else -> msg
         }
+    }
+
+    private fun Throwable.isNetworkError(): Boolean {
+        val msg = message?.lowercase().orEmpty()
+        return this is UnknownHostException ||
+                this is SocketTimeoutException ||
+                this is IOException ||
+                "unable to resolve host" in msg ||
+                "failed to connect" in msg ||
+                "timeout" in msg
     }
 }
